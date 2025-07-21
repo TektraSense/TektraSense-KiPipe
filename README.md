@@ -1,3 +1,5 @@
+![Status](https://img.shields.io/badge/status-work_in_progress-yellow)
+
 # KiCad Component Pipeline
 
 Automated data pipeline to populate a KiCad component database from supplier APIs.
@@ -8,6 +10,12 @@ Automated data pipeline to populate a KiCad component database from supplier API
 - Stores component data in a centralized PostgreSQL database.
 - Normalizes data structure for efficient querying and management.
 - Generates a KiCad Database Library (`.kicad_dbl`) for direct integration.
+
+## 🚧 Development Status
+
+**This project is currently in the early stages of development.**
+
+The database schema and initial setup are complete. However, the core data fetching scripts and API integrations are not yet implemented. The project is **not ready for production use**. Please feel free to check back later for updates.
 
 ## 🛠️ Tech Stack
 
