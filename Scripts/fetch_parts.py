@@ -1,13 +1,13 @@
 # scripts/fetch_parts.py
 import argparse
 import sys
-from utils.db_manager import connect_to_db
+from utils.db_manager import connect_to_db, upsert_component
 from utils.api_clients import fetch_part_data
 
 def main():
     """
     Main function to fetch component data from an API
-    and prepare it for database insertion.
+    and load it into the database.
     """
     parser = argparse.ArgumentParser(
         description="Fetch KiCad component data from supplier APIs."
@@ -30,14 +30,11 @@ def main():
         print(f"  {key}: {value}")
     print("-----------------------------------")
     
-    # --- Database Connection (Step for the future) ---
-    # print("\nConnecting to database to load data...")
-    # conn = connect_to_db()
-    # if conn:
-    #     # TODO: Add logic to load `part_data` into the database
-    #     print("Data loading logic will be implemented here.")
-    #     conn.close()
-    #     print("Database connection closed.")
+    conn = connect_to_db()
+    if conn:
+        upsert_component(conn, part_data)
+        conn.close()
+        print("Database connection closed.")
 
 
 if __name__ == '__main__':
