@@ -5,10 +5,12 @@ import re
 import logging
 from dotenv import load_dotenv
 from typing import Optional, List, Dict, Any
+from db_manager import DatabaseManager
 
 # --- Basic Configuration ---
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
 
 # ==============================================================================
 # 1. CONFIGURATION
@@ -21,34 +23,32 @@ MOUSER_API_URL = "https://api.mouser.com/api/v1/search/keyword"
 
 # --- Data Mappers ---
 DIGIKEY_MAPPER = {
-    "manufacturer_part_number": "ManufacturerProductNumber",
-    "manufacturer": "Manufacturer.Name",
-    "datasheet_url": "DatasheetUrl",
-    "product_status": "ProductStatus.Status",
-    "rohs_status": "Classifications.RohsStatus",
-    "supplier_part_number": "ProductVariations.0.DigiKeyProductNumber",
-    "supplier_product_url": "ProductUrl",
-    "category_obj": "Category",
-    "parameters_list": "Parameters",
-    "pricing_list": "ProductVariations.0.StandardPricing",
-    "quantity_available": "QuantityAvailable",
+    "manufacturer_part_number": "ManufacturerProductNumber", "manufacturer": "Manufacturer.Name",
+    "description": "Description.DetailedDescription", "datasheet_url": "DatasheetUrl",
+    "product_status": "ProductStatus.Status", "rohs_status": "Classifications.RohsStatus",
+    "supplier_part_number": "ProductVariations.0.DigiKeyProductNumber", "supplier_product_url": "ProductUrl",
+    "supplier_category_object": "Category", "parameters_list": "Parameters",
+    "pricing_list": "ProductVariations.0.StandardPricing", "quantity_available": "QuantityAvailable",
 }
-
 MOUSER_MAPPER = {
-    "manufacturer_part_number": "ManufacturerPartNumber",
-    "manufacturer": "Manufacturer",
-    "datasheet_url": "DataSheetUrl",
-    "product_status": "LifecycleStatus",
-    "rohs_status": "ROHSStatus",
-    "supplier_part_number": "MouserPartNumber",
-    "supplier_product_url": "ProductDetailUrl",
-    "category_obj": {"key": "Category", "is_mouser": True}, # Special handling for Mouser's flat category
-    "parameters_list": "ProductAttributes",
-    "pricing_list": "PriceBreaks",
-    "quantity_available": "Availability",
+    "manufacturer_part_number": "ManufacturerPartNumber", "manufacturer": "Manufacturer",
+    "description": "Description", "datasheet_url": "DataSheetUrl",
+    "product_status": "LifecycleStatus", "rohs_status": "ROHSStatus",
+    "supplier_part_number": "MouserPartNumber", "supplier_product_url": "ProductDetailUrl",
+    "supplier_category": "Category", "parameters_list": "ProductAttributes",
+    "pricing_list": "PriceBreaks", "quantity_available": "Availability",
 }
 
-# --- Category-Specific Logic Recipes ---
+# --- Formatting Recipes ---
+def format_resistance(resistance_str: Optional[str]) -> str:
+    if not isinstance(resistance_str, str): return ""
+    text = resistance_str.strip()
+    text = re.sub(r'\s*MOhms\b', 'MΩ', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*kOhms\b', 'kΩ', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*mOhms\b', 'mΩ', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s*Ohms\b', 'Ω', text, flags=re.IGNORECASE)
+    return text
+
 CATEGORY_RECIPES = [
     {
         "trigger": lambda path: path and "Resistors" in path[0],
@@ -217,151 +217,88 @@ CATEGORY_RECIPES = [
     }
 ]
 
-
 # ==============================================================================
 # 2. GENERIC HELPER FUNCTIONS
 # ==============================================================================
-
 def _get_nested_value(data: Dict[str, Any], path: str) -> Any:
-    """Safely gets a value from a nested structure using a dot-separated path."""
     keys = path.split('.')
     current_level = data
     for key in keys:
-        if isinstance(current_level, dict):
-            current_level = current_level.get(key)
+        if isinstance(current_level, dict): current_level = current_level.get(key)
         elif isinstance(current_level, list) and key.isdigit():
-            try:
-                current_level = current_level[int(key)]
-            except (ValueError, IndexError):
-                return None
-        else:
-            return None
+            try: current_level = current_level[int(key)]
+            except (ValueError, IndexError): return None
+        else: return None
     return current_level
 
 def find_param_in_list(parameters: Optional[List[Dict[str, str]]], *param_names: str) -> Optional[str]:
-    """Finds a parameter value from a list of parameter dictionaries."""
-    if not parameters:
-        return None
+    if not parameters: return None
     return next((p.get('ValueText') or p.get('AttributeValue') for p in parameters if (p.get('ParameterText') or p.get('AttributeName')) in param_names and (p.get('ValueText') or p.get('AttributeValue')) != '-'), None)
 
 def normalize_rohs_status(status: Optional[str]) -> str:
-    """Normalizes RoHS status string to 'Yes' or 'No'."""
     return "Yes" if status and "rohs" in status.lower() else "No"
 
-def format_resistance(resistance_str: Optional[str]) -> str:
-    """Formats resistance string with appropriate symbols (e.g., kOhms -> kΩ)."""
-    if not isinstance(resistance_str, str): return ""
-    text = resistance_str.strip()
-    text = re.sub(r'\s*MOhms\b', 'MΩ', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*kOhms\b', 'kΩ', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*mOhms\b', 'mΩ', text, flags=re.IGNORECASE)
-    text = re.sub(r'\s*Ohms\b', 'Ω', text, flags=re.IGNORECASE)
-    return text
-
-def get_category_path(category_obj: Optional[Dict[str, Any]]) -> List[str]:
-    """Recursively builds the category path from a nested Digi-Key category object."""
-    if not isinstance(category_obj, dict):
-        return []
+def get_category_path_from_object(category_obj: Optional[Dict[str, Any]]) -> List[str]:
+    if not isinstance(category_obj, dict): return []
     name = category_obj.get("Name", "")
     children = category_obj.get("ChildCategories")
-    # Base case: no more children
-    if not children:
-        return [name]
-    # Recursive step
-    return [name] + get_category_path(children[0])
-
+    if not children: return [name]
+    return [name] + get_category_path_from_object(children[0])
 
 # ==============================================================================
 # 3. API CALLING LAYER
 # ==============================================================================
-
 def _call_digikey_api(part_number: str) -> Optional[Dict[str, Any]]:
-    """Calls the Digi-Key API to search for a part number."""
     client_id = os.getenv("DIGIKEY_CLIENT_ID")
     client_secret = os.getenv("DIGIKEY_CLIENT_SECRET")
     if not all([client_id, client_secret]):
-        logging.error("Digi-Key API credentials are not set.")
+        log.error("Digi-Key API credentials are not set.")
         return None
-
     try:
-        # Get Token
         auth_resp = requests.post(DIGIKEY_TOKEN_URL, data={"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"})
         auth_resp.raise_for_status()
         access_token = auth_resp.json()["access_token"]
-        
-        # Search for part
-        headers = {
-            "Authorization": f"Bearer {access_token}", 
-            "X-DIGIKEY-Client-Id": client_id, 
-            "Content-Type": "application/json",
-            "X-DIGIKEY-Locale-Site": "US",
-            "X-DIGIKEY-Locale-Language": "en"
-        }
+        headers = {"Authorization": f"Bearer {access_token}", "X-DIGIKEY-Client-Id": client_id, "Content-Type": "application/json", "X-DIGIKEY-Locale-Site": "US", "X-DIGIKEY-Locale-Language": "en"}
         search_body = {"Keywords": part_number, "RecordCount": 1}
-        logging.info(f"Calling Digi-Key KeywordSearch API for '{part_number}'...")
+        log.info(f"Calling Digi-Key KeywordSearch API for '{part_number}'...")
         search_resp = requests.post(DIGIKEY_SEARCH_URL, headers=headers, json=search_body)
-
-        if search_resp.status_code == 404:
-            return None
+        if search_resp.status_code == 404: return None
         search_resp.raise_for_status()
         results = search_resp.json()
-
         return results.get('Products')[0] if results.get('Products') else None
     except (requests.exceptions.RequestException, KeyError, IndexError) as e:
-        logging.error(f"Digi-Key API call failed: {e}")
+        log.error(f"Digi-Key API call failed: {e}")
         return None
 
 def _call_mouser_api(part_number: str) -> Optional[Dict[str, Any]]:
-    """Calls the Mouser API to search for a part number."""
     api_key = os.getenv("MOUSER_API_KEY")
     if not api_key:
-        logging.error("Mouser API key is not set.")
+        log.error("Mouser API key is not set.")
         return None
-    
     endpoint = f"{MOUSER_API_URL}?apiKey={api_key}"
     headers = {'Content-Type': 'application/json'}
     body = {"SearchByKeywordRequest": {"keyword": part_number, "records": 1}}
-    
     try:
-        logging.info(f"Calling Mouser Keyword API for '{part_number}'...")
+        log.info(f"Calling Mouser Keyword API for '{part_number}'...")
         response = requests.post(endpoint, headers=headers, json=body)
         response.raise_for_status()
         results = response.json()
         parts = results.get('SearchResults', {}).get('Parts', [])
-
-        if not parts:
-            return None
-        
-        # Mouser can return irrelevant parts, so double-check the part number
+        if not parts: return None
         part = parts[0]
         if part.get("ManufacturerPartNumber", "").upper() == part_number.upper():
             return part
         return None
     except (requests.exceptions.RequestException, KeyError, IndexError) as e:
-        logging.error(f"Mouser API call failed: {e}")
+        log.error(f"Mouser API call failed: {e}")
         return None
-
 
 # ==============================================================================
 # 4. DATA TRANSFORMATION & BUSINESS LOGIC LAYER
 # ==============================================================================
 
-def _transform_data(raw_part: Dict[str, Any], mapper: Dict[str, Any]) -> Dict[str, Any]:
-    """Transforms raw API data into our standard format using a mapper."""
-    normalized = {}
-    for standard_field, supplier_field in mapper.items():
-        if isinstance(supplier_field, dict) and supplier_field.get("is_mouser"):
-            # Special handling for Mouser's flat category string
-            normalized[standard_field] = {"Name": raw_part.get(supplier_field["key"])}
-        else:
-            normalized[standard_field] = _get_nested_value(raw_part, supplier_field)
-    return normalized
-
-def _apply_category_logic(part_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Applies category-specific logic to generate description and value."""
-    category_path = get_category_path(part_data.get("category_obj"))
+def _apply_formatting_recipes(part_data: Dict[str, Any], category_details: Dict[str, Any], category_path: List[str]) -> Dict[str, Any]:
     params = part_data.get("parameters_list", [])
-
     def find_param(*param_names):
         return find_param_in_list(params, *param_names)
 
@@ -370,149 +307,133 @@ def _apply_category_logic(part_data: Dict[str, Any]) -> Dict[str, Any]:
             params_to_find = recipe["description_params"](category_path)
             desc_details = [recipe["description_prefix"](category_path)]
             desc_details.extend(find_param(p) for p in params_to_find)
-            
             part_data["description"] = ", ".join(filter(None, desc_details))
-            
             try:
-                # value_generator จะคืนค่าเป็น string ที่สมบูรณ์แล้ว
                 part_data["component_value"] = recipe["value_generator"](find_param, category_path)
-            except (TypeError, AttributeError):
-                part_data["component_value"] = part_data.get("manufacturer_part_number")
-            
-            # ทำให้แน่ใจว่าถ้า component_value เป็นค่าว่าง ให้ใช้ part_number แทน
+            except (TypeError, AttributeError): pass
             if not part_data.get("component_value"):
                 part_data["component_value"] = part_data.get("manufacturer_part_number")
-
             return part_data
     
     # Fallback if no recipe matches
-    part_data["description"] = _get_nested_value(part_data, "Description.DetailedDescription")
-    part_data["component_value"] = part_data.get("manufacturer_part_number")
+    if not part_data.get("description"):
+        part_data["description"] = part_data.get("description")
+    if not part_data.get("component_value"):
+        part_data["component_value"] = part_data.get("manufacturer_part_number")
     return part_data
 
-def _extract_physical_params(part_data: Dict[str, Any], params_list: List[Dict], category_path: List[str]):
-    """Extracts and standardizes physical parameters like temperature and mounting type."""
-    if category_path:
-        part_data["sub_subcategories"] = re.sub(r"\s*-\s*Surface Mount$", "", category_path[-1]).strip()
-    else:
-        part_data["sub_subcategories"] = None
+def _process_and_format_data(raw_part: Dict[str, Any], mapper: Dict[str, Any], category_id: int, db_manager: DatabaseManager) -> Optional[Dict[str, Any]]:
+    part_data = {std_field: _get_nested_value(raw_part, sup_field) for std_field, sup_field in mapper.items()}
+    part_data['category_id'] = category_id
+    
+    category_details = db_manager.get_category_details(category_id)
+    if not category_details:
+        log.error(f"Could not find details for category_id {category_id}")
+        return None
 
+    parent_details = db_manager.get_category_details(category_details['parent_id']) if category_details.get('parent_id') else None
+    full_prefix = category_details['prefix']
+    if parent_details:
+        full_prefix = f"{parent_details['prefix']}-{full_prefix}"
+    part_data['internal_part_id'] = db_manager.get_next_internal_part_id(full_prefix)
+
+    category_path = get_category_path_from_object(part_data.get("supplier_category_object"))
+    part_data = _apply_formatting_recipes(part_data, category_details, category_path)
+
+    part_data["rohs_status"] = normalize_rohs_status(part_data.get("rohs_status"))
+    price_breaks = []
+    for price in part_data.get("pricing_list") or []:
+        quantity = price.get('BreakQuantity') or price.get('Quantity')
+        unit_price = str(price.get('UnitPrice') or price.get('Price', '')).replace('$', '')
+        if quantity is not None and unit_price: price_breaks.append(f"{quantity}:{unit_price}")
+    
+    parameters_json = {"availability": part_data.get('quantity_available'), "price_breaks_usd": ", ".join(price_breaks)}
+    part_data['parameters'] = json.dumps(parameters_json)
+    
+    params_list = part_data.get("parameters_list", [])
     part_data["package_case"] = find_param_in_list(params_list, "Package / Case")
     
-    # Extract and clean operating temperature
+    mount_type = find_param_in_list(params_list, "Mounting Type")
+    part_data["mounting_type"] = None
+    if isinstance(mount_type, str):
+        if "surface mount" in mount_type.lower(): part_data["mounting_type"] = "Surface Mount"
+        elif "through-hole" in mount_type.lower() or "through hole" in mount_type.lower(): part_data["mounting_type"] = "Through-Hole"
+    if not part_data.get("mounting_type"):
+        path_str = " ".join(category_path).lower()
+        if "surface mount" in path_str: part_data["mounting_type"] = "Surface Mount"
+        elif "through-hole" in path_str or "through hole" in path_str: part_data["mounting_type"] = "Through-Hole"
+    
     temp_str = find_param_in_list(params_list, "Operating Temperature", "Operating Temperature - Junction")
     if isinstance(temp_str, str):
         part_data["operating_temperature"] = re.sub(r"\s*\([^)]*\)", "", temp_str).strip()
     else:
         part_data["operating_temperature"] = None
-
-    # Standardize mounting type from parameter list first, then from category path
-    mount_type = find_param_in_list(params_list, "Mounting Type")
-    if isinstance(mount_type, str):
-        if "surface mount" in mount_type.lower():
-            part_data["mounting_type"] = "Surface Mount"
-        elif "through-hole" in mount_type.lower() or "through hole" in mount_type.lower():
-            part_data["mounting_type"] = "Through-Hole"
-    elif not part_data.get("mounting_type"): # Fallback to category path
-        path_str = " ".join(category_path).lower()
-        if "surface mount" in path_str:
-            part_data["mounting_type"] = "Surface Mount"
-        elif "through-hole" in path_str or "through hole" in path_str:
-            part_data["mounting_type"] = "Through-Hole"
-
-
-def _format_pricing_and_availability(part_data: Dict[str, Any], category_path: List[str]):
-    """Formats pricing into a string and builds the final parameters JSON."""
-    price_breaks = []
-    for price in part_data.get("pricing_list") or []:
-        quantity = price.get('BreakQuantity') or price.get('Quantity')
-        unit_price = price.get('UnitPrice') or str(price.get('Price', '')).replace('$', '')
-        if quantity is not None and unit_price:
-            price_breaks.append(f"{quantity}:{unit_price}")
     
-    parameters = {
-        "availability": part_data.get('quantity_available'), 
-        "category": category_path[0] if category_path else None,
-        "price_breaks_usd": ", ".join(price_breaks)
-    }
-    part_data['parameters'] = json.dumps(parameters)
-
-
-def _normalize_final_fields(part_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Orchestrates final cleanup and data formatting."""
-    part_data["rohs_status"] = normalize_rohs_status(part_data.get("rohs_status"))
-    
-    params_list = part_data.get("parameters_list", [])
-    category_path = get_category_path(part_data.get("category_obj"))
-    
-    _extract_physical_params(part_data, params_list, category_path)
-    _format_pricing_and_availability(part_data, category_path)
-
-    # Clean up temporary fields that are now embedded in other fields
     part_data.pop("pricing_list", None)
     part_data.pop("parameters_list", None)
-    part_data.pop("category_obj", None)
     part_data.pop("quantity_available", None)
+    part_data.pop("supplier_category", None)
+    part_data.pop("supplier_category_object", None)
     
     return part_data
 
-
 # ==============================================================================
-# 5. ORCHESTRATION LAYER (The Public Interface)
+# 5. ORCHESTRATION LAYER (The Public Interface) - FINAL CORRECTED VERSION
 # ==============================================================================
-
-def _process_supplier_data(raw_part: Optional[Dict[str, Any]], mapper: Dict[str, Any], supplier_name: str) -> Optional[Dict[str, Any]]:
-    """Chains together the full data processing pipeline for a single supplier."""
-    if not raw_part:
-        return None
-    
-    logging.info(f"Processing raw data from {supplier_name}...")
-    normalized_data = _transform_data(raw_part, mapper)
-    normalized_data = _apply_category_logic(normalized_data)
-    normalized_data = _normalize_final_fields(normalized_data)
-    normalized_data['supplier_name'] = supplier_name # Add supplier name for later use
-    
-    return normalized_data
-
-def fetch_part_data(part_number: str) -> Optional[List[Dict[str, Any]]]:
-    """
-    Orchestrates fetching data from all suppliers, normalizing it,
-    and applying business logic for supplier priority.
-    """
-    logging.info(f"Orchestrator: Starting search for '{part_number}'...")
+def fetch_part_data(part_number: str, db_manager: DatabaseManager) -> Optional[List[Dict[str, Any]]]:
+    log.info(f"Orchestrator: Starting search for '{part_number}'...")
 
     digikey_raw = _call_digikey_api(part_number)
     mouser_raw = _call_mouser_api(part_number)
 
-    processed_results = [
-        _process_supplier_data(digikey_raw, DIGIKEY_MAPPER, "Digi-Key"),
-        _process_supplier_data(mouser_raw, MOUSER_MAPPER, "Mouser")
-    ]
-
-    valid_results = [res for res in processed_results if res is not None]
-
-    if not valid_results:
-        logging.warning(f"Orchestrator: Part '{part_number}' not found on any supplier.")
+    if not digikey_raw and not mouser_raw:
+        log.warning(f"Orchestrator: Part '{part_number}' not found on any supplier.")
         return None
 
-    # Ensure Digi-Key is the primary data source by sorting it to the front of the list.
-    valid_results.sort(key=lambda x: x['supplier_name'] != 'Digi-Key')
+    # Step 1: Find a valid Category ID, prioritizing Digi-Key
+    category_id = None
+    dk_cat_name, mouser_cat_name = None, None
 
-    # Use the first result as the base for our final data.
-    final_data = valid_results[0]
-    final_data["supplier_1"] = final_data.pop('supplier_name')
+    if digikey_raw:
+        dk_cat_obj = _get_nested_value(digikey_raw, DIGIKEY_MAPPER['supplier_category_object'])
+        dk_cat_name = _get_nested_value(dk_cat_obj, "Name")
+        if dk_cat_name:
+            category_id = db_manager.get_category_id("Digi-Key", dk_cat_name)
+
+    if not category_id and mouser_raw:
+        mouser_cat_name = _get_nested_value(mouser_raw, MOUSER_MAPPER['supplier_category'])
+        if mouser_cat_name:
+            log.info("Borrowing category from Mouser...")
+            category_id = db_manager.get_category_id("Mouser", mouser_cat_name)
+
+    if not category_id:
+        log.warning(f"No valid category mapping found for '{part_number}'. Logging for review.")
+        if dk_cat_name: db_manager.add_unmapped_category("Digi-Key", dk_cat_name)
+        if mouser_cat_name: db_manager.add_unmapped_category("Mouser", mouser_cat_name)
+        return None
+
+    # Step 2: Process the data, ALWAYS prioritizing Digi-Key's raw data if it exists
+    base_raw_data = digikey_raw if digikey_raw else mouser_raw
+    base_mapper = DIGIKEY_MAPPER if digikey_raw else MOUSER_MAPPER
+    
+    final_data = _process_and_format_data(base_raw_data, base_mapper, category_id, db_manager)
+
+    if not final_data:
+        log.warning(f"Orchestrator: Failed to process data for '{part_number}' after finding category.")
+        return None
+
+    # Step 3: Rename generic keys to specific supplier keys (_1, _2)
+    primary_supplier_is_digikey = True if digikey_raw else False
+
+    final_data['supplier_1'] = "Digi-Key" if primary_supplier_is_digikey else "Mouser"
+    # Use .pop() to get the value AND remove the old key at the same time
     final_data['supplier_part_number_1'] = final_data.pop('supplier_part_number')
     final_data['supplier_product_url_1'] = final_data.pop('supplier_product_url')
 
-    # If a second supplier exists, merge its key information.
-    if len(valid_results) > 1:
-        secondary_supplier = valid_results[1]
-        logging.info(
-            f"Data found on both suppliers. Using {final_data['supplier_1']} as base, "
-            f"merging from {secondary_supplier['supplier_name']}."
-        )
-        final_data["supplier_2"] = secondary_supplier.get("supplier_name")
-        final_data["supplier_part_number_2"] = secondary_supplier.get("supplier_part_number")
-        final_data["supplier_product_url_2"] = secondary_supplier.get("supplier_product_url")
+    # Add secondary supplier info if it exists
+    if primary_supplier_is_digikey and mouser_raw:
+        final_data['supplier_2'] = "Mouser"
+        final_data['supplier_part_number_2'] = _get_nested_value(mouser_raw, MOUSER_MAPPER['supplier_part_number'])
+        final_data['supplier_product_url_2'] = _get_nested_value(mouser_raw, MOUSER_MAPPER['supplier_product_url'])
 
     return [final_data]

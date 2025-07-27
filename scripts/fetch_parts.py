@@ -1,6 +1,7 @@
 import argparse
 import sys
 import logging
+import json
 from api_clients import fetch_part_data
 from db_manager import DatabaseManager
 
@@ -31,12 +32,21 @@ def main():
     )
     args = parser.parse_args()
 
-    list_of_parts = fetch_part_data(args.part_number)
-
+    list_of_parts = fetch_part_data(args.part_number, db_manager)
+    
     if list_of_parts:
         log.info(f"Successfully fetched data for {len(list_of_parts)} part(s).")
         for part_data in list_of_parts:
-            # This is where the new code block goes, replacing the old call.
+
+            # =======================================================
+            # === เอา # ออกจากโค้ดส่วนนี้เพื่อ Debug ===
+            # =======================================================
+            #log.info("--- DEBUG: Data being sent to upsert ---")
+            # ใช้ json.dumps เพื่อ print dict ออกมาดูสวยงาม
+            #print(json.dumps(part_data, indent=4, default=str))
+            #log.info("----------------------------------------")
+            # =======================================================
+
             db_manager.upsert_data(
                 table_name="components",
                 pk_column="manufacturer_part_number",
