@@ -131,15 +131,16 @@ class ComponentProcessor:
             log.warning(f"Orchestrator: Part '{part_number}' not found on any supplier.")
             return None
 
-        # Step 1: Find a valid Category ID, prioritizing Digi-Key
+        # Step 1: Find a valid Category ID, prioritizing DigiKey
         category_id = None
         dk_cat_name, mouser_cat_name = None, None
 
         if digikey_raw:
-            dk_cat_obj = self._get_nested_value(digikey_raw, config.DIGIKEY_MAPPER['supplier_category_object'])
+            # dk_cat_obj = self._get_nested_value(digikey_raw, config.DIGIKEY_MAPPER['supplier_category_object'])
+            dk_cat_obj = self._get_nested_value(digikey_raw, "ChildCategories")
             dk_cat_name = self._get_nested_value(dk_cat_obj, "Name")
             if dk_cat_name:
-                category_id = self.db_manager.get_category_id("Digi-Key", dk_cat_name)
+                category_id = self.db_manager.get_category_id("DigiKey", dk_cat_name)
 
         if not category_id and mouser_raw:
             mouser_cat_name = self._get_nested_value(mouser_raw, config.MOUSER_MAPPER['supplier_category'])
@@ -149,11 +150,11 @@ class ComponentProcessor:
 
         if not category_id:
             log.warning(f"No valid category mapping found for '{part_number}'. Logging for review.")
-            if dk_cat_name: self.db_manager.add_unmapped_category("Digi-Key", dk_cat_name)
+            if dk_cat_name: self.db_manager.add_unmapped_category("DigiKey", dk_cat_name)
             if mouser_cat_name: self.db_manager.add_unmapped_category("Mouser", mouser_cat_name)
             return None
 
-        # Step 2: Process the data, ALWAYS prioritizing Digi-Key's raw data if it exists
+        # Step 2: Process the data, ALWAYS prioritizing DigiKey's raw data if it exists
         base_raw_data = digikey_raw if digikey_raw else mouser_raw
         base_mapper = config.DIGIKEY_MAPPER if digikey_raw else config.MOUSER_MAPPER
         
@@ -164,7 +165,7 @@ class ComponentProcessor:
             return None
 
         # Step 3: Rename generic keys and merge supplier-specific info
-        final_data['supplier_1'] = "Digi-Key" if digikey_raw else "Mouser"
+        final_data['supplier_1'] = "DigiKey" if digikey_raw else "Mouser"
         # --- FIX: Use .pop() to move the value and remove the old key ---
         final_data['supplier_part_number_1'] = final_data.pop('supplier_part_number', None)
         final_data['supplier_product_url_1'] = final_data.pop('supplier_product_url', None)

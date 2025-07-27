@@ -1,7 +1,7 @@
 """
 API Client for external component suppliers.
 
-This module contains functions dedicated to calling the Digi-Key and
+This module contains functions dedicated to calling the DigiKey and
 Mouser APIs and returning the raw JSON response.
 """
 import os
@@ -16,7 +16,7 @@ def call_digikey_api(part_number: str) -> Optional[Dict[str, Any]]:
     client_id = os.getenv("DIGIKEY_CLIENT_ID")
     client_secret = os.getenv("DIGIKEY_CLIENT_SECRET")
     if not all([client_id, client_secret]):
-        log.error("Digi-Key API credentials are not set.")
+        log.error("DigiKey API credentials are not set.")
         return None
     try:
         auth_resp = requests.post(config.DIGIKEY_TOKEN_URL, data={"client_id": client_id, "client_secret": client_secret, "grant_type": "client_credentials"})
@@ -24,14 +24,14 @@ def call_digikey_api(part_number: str) -> Optional[Dict[str, Any]]:
         access_token = auth_resp.json()["access_token"]
         headers = {"Authorization": f"Bearer {access_token}", "X-DIGIKEY-Client-Id": client_id, "Content-Type": "application/json", "X-DIGIKEY-Locale-Site": "US", "X-DIGIKEY-Locale-Language": "en"}
         search_body = {"Keywords": part_number, "RecordCount": 1}
-        log.info(f"Calling Digi-Key KeywordSearch API for '{part_number}'...")
+        log.info(f"Calling DigiKey KeywordSearch API for '{part_number}'...")
         search_resp = requests.post(config.DIGIKEY_SEARCH_URL, headers=headers, json=search_body)
         if search_resp.status_code == 404: return None
         search_resp.raise_for_status()
         results = search_resp.json()
         return results.get('Products')[0] if results.get('Products') else None
     except (requests.exceptions.RequestException, KeyError, IndexError) as e:
-        log.error(f"Digi-Key API call failed: {e}")
+        log.error(f"DigiKey API call failed: {e}")
         return None
 
 def call_mouser_api(part_number: str) -> Optional[Dict[str, Any]]:

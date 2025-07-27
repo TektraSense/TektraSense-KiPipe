@@ -76,7 +76,7 @@ class MappingAssistant:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
     db = DatabaseManager()
     if db.connection_pool:
         assistant = MappingAssistant(db)
