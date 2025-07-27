@@ -1,22 +1,15 @@
+# fetch_parts.py
 import argparse
 import sys
 import logging
 import json
-from api_clients import fetch_part_data
+from data_processor import ComponentProcessor
 from db_manager import DatabaseManager
 
-# Configure logging at the application's entry point
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 def main():
-    """
-    Initializes the application, fetches component data based on command-line
-    arguments, and upserts the data into the database.
-    """
     log.info("Application starting...")
     db_manager = DatabaseManager()
 
@@ -25,28 +18,15 @@ def main():
         sys.exit(1)
 
     parser = argparse.ArgumentParser(description="Fetch component data from supplier APIs.")
-    parser.add_argument(
-        "-p", "--part-number",
-        required=True,
-        help="The manufacturer part number to search for."
-    )
+    parser.add_argument("-p", "--part-number", required=True, help="The manufacturer part number to search for.")
     args = parser.parse_args()
 
-    list_of_parts = fetch_part_data(args.part_number, db_manager)
+    processor = ComponentProcessor(db_manager)
+    list_of_parts = processor.fetch_part_data(args.part_number)
     
     if list_of_parts:
         log.info(f"Successfully fetched data for {len(list_of_parts)} part(s).")
         for part_data in list_of_parts:
-
-            # =======================================================
-            # === เอา # ออกจากโค้ดส่วนนี้เพื่อ Debug ===
-            # =======================================================
-            #log.info("--- DEBUG: Data being sent to upsert ---")
-            # ใช้ json.dumps เพื่อ print dict ออกมาดูสวยงาม
-            #print(json.dumps(part_data, indent=4, default=str))
-            #log.info("----------------------------------------")
-            # =======================================================
-
             db_manager.upsert_data(
                 table_name="components",
                 pk_column="manufacturer_part_number",

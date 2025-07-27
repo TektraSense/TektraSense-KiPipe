@@ -4,7 +4,7 @@ import psycopg2
 from contextlib import contextmanager
 from psycopg2 import pool
 from dotenv import load_dotenv
-from typing import Dict, Any, Iterator, Optional, Tuple
+from typing import Dict, Any, Iterator, Optional, Tuple, List
 
 log = logging.getLogger(__name__)
 
@@ -140,3 +140,28 @@ class DatabaseManager:
             log.error(f"Error logging unmapped category: {error}")
             if 'conn' in locals() and conn:
                 conn.rollback()
+    
+    def fetch_all(self, query: str, params: Optional[tuple] = None) -> List[tuple]:
+        """Fetches all rows from a custom query."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+                    return cur.fetchall()
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Error fetching all rows: {error}")
+            return []
+
+    def execute_query(self, query: str, params: Optional[tuple] = None):
+        """Executes a query that does not return data (INSERT, UPDATE, DELETE)."""
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, params)
+                conn.commit()
+            return True
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Error executing query: {error}")
+            if 'conn' in locals() and conn:
+                conn.rollback()
+            return False
