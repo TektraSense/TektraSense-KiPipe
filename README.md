@@ -60,8 +60,28 @@ The core functionalities of this project are complete, and the application is **
 4.  **Set up environment variables:**
     -   Copy the `.env.example` file to `.env`.
     -   Fill in your database credentials, API keys, and the absolute paths to your KiCad symbol/footprint library folders.
+
     ```bash
     cp .env.example .env
+    ```
+
+    **Example `.env` file:**
+    ```env
+    # --- PostgreSQL Database ---
+    DB_HOST=localhost
+    DB_PORT=5432
+    DB_NAME=kicad_components
+    DB_USER=postgres
+    DB_PASSWORD=your_secure_password
+
+    # --- Supplier API Keys ---
+    DIGIKEY_CLIENT_ID=your_digikey_client_id
+    DIGIKEY_CLIENT_SECRET=your_digikey_client_secret
+    MOUSER_API_KEY=your_mouser_api_key
+
+    # --- KiCad Library Paths (Absolute Paths Recommended) ---
+    KICAD_SYMBOL_BASE_PATH="/path/to/your/kicad/symbols"
+    KICAD_FOOTPRINT_BASE_PATH="/path/to/your/kicad/footprints"
     ```
 
 ## Usage
