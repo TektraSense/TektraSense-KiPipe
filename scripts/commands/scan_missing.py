@@ -1,4 +1,3 @@
-# scripts/commands/scan_missing.py
 import logging
 import sys
 from ..db_manager import DatabaseManager

@@ -1,8 +1,3 @@
-# data_processor.py
-"""
-Main data processing and orchestration logic.
-Contains the ComponentProcessor class.
-"""
 import json
 import logging
 import re
@@ -136,7 +131,6 @@ class ComponentProcessor:
         dk_cat_name, mouser_cat_name = None, None
 
         if digikey_raw:
-            # dk_cat_obj = self._get_nested_value(digikey_raw, config.DIGIKEY_MAPPER['supplier_category_object'])
             dk_cat_obj = self._get_nested_value(digikey_raw, "ChildCategories")
             dk_cat_name = self._get_nested_value(dk_cat_obj, "Name")
             if dk_cat_name:
@@ -166,7 +160,6 @@ class ComponentProcessor:
 
         # Step 3: Rename generic keys and merge supplier-specific info
         final_data['supplier_1'] = "DigiKey" if digikey_raw else "Mouser"
-        # --- FIX: Use .pop() to move the value and remove the old key ---
         final_data['supplier_part_number_1'] = final_data.pop('supplier_part_number', None)
         final_data['supplier_product_url_1'] = final_data.pop('supplier_product_url', None)
         

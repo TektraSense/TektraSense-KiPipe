@@ -1,4 +1,3 @@
-# scripts/commands/add_footprint.py
 import logging
 import sys
 import os

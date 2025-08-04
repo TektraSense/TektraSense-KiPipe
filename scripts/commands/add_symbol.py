@@ -1,4 +1,3 @@
-# scripts/commands/add_symbol.py
 import logging
 import sys
 import os

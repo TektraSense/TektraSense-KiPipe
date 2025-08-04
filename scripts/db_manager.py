@@ -64,7 +64,6 @@ class DatabaseManager:
             if 'conn' in locals() and conn:
                 conn.rollback()
 
-    # --- ฟังก์ชันที่เพิ่มเข้ามาใหม่ ---
     def get_category_id(self, supplier_name: str, supplier_category: str) -> Optional[int]:
         """Finds the internal category_id from the mappings table."""
         sql = "SELECT category_id FROM category_mappings WHERE supplier_name = %s AND supplier_category = %s"
@@ -80,7 +79,6 @@ class DatabaseManager:
 
     def get_category_details(self, category_id: int) -> Optional[Dict[str, Any]]:
         """Gets category details (parent_id, name, prefix) from the master categories table."""
-        # เพิ่ม parent_id เข้าไปในคำสั่ง SELECT
         sql = "SELECT parent_id, category_name, category_prefix FROM categories WHERE category_id = %s"
         try:
             with self.get_connection() as conn:
@@ -88,7 +86,6 @@ class DatabaseManager:
                     cur.execute(sql, (category_id,))
                     result = cur.fetchone()
                     if result:
-                        # เพิ่ม parent_id เข้าไปใน dictionary ที่ส่งกลับไป
                         return {"parent_id": result[0], "name": result[1], "prefix": result[2]}
                     return None
         except (Exception, psycopg2.DatabaseError) as error:
@@ -97,8 +94,6 @@ class DatabaseManager:
 
     def get_next_internal_part_id(self, prefix: str) -> str:
         """Generates the next sequential internal_part_id for a given prefix."""
-        # This is a simple implementation. For high concurrency, a sequence or a
-        # dedicated table might be better.
         sql = "SELECT internal_part_id FROM components WHERE internal_part_id LIKE %s ORDER BY internal_part_id DESC LIMIT 1"
         like_pattern = f"{prefix}-%"
         try:
@@ -121,10 +116,9 @@ class DatabaseManager:
             self.connection_pool.closeall()
             log.info("Database connection pool closed.")
 
-    # ในคลาส DatabaseManager ของไฟล์ db_manager.py
     def add_unmapped_category(self, supplier_name: str, supplier_category: str):
         """Adds a new, unknown category to the unmapped_categories table for review."""
-        # ON CONFLICT DO NOTHING จะป้องกันการเพิ่มข้อมูลซ้ำซ้อน
+        # ON CONFLICT DO NOTHING
         sql = """
             INSERT INTO unmapped_categories (supplier_name, supplier_category)
             VALUES (%s, %s)
@@ -199,13 +193,11 @@ class DatabaseManager:
             log.error(f"Error fetching component search details for {part_number}: {error}")
             return None
 
-    # ในไฟล์ scripts/db_manager.py
     def search_generic_symbols(self, keywords: set) -> List[tuple]:
         """Searches the symbols table based on a set of keywords."""
         if not keywords:
             return []
         try:
-            # สร้างเงื่อนไข OR สำหรับทุก Keyword
             search_conditions = " OR ".join([f"keywords ILIKE %s" for _ in keywords])
             query = f"SELECT library_nickname, symbol_name FROM symbols WHERE {search_conditions}"
             search_terms = [f"%{kw.strip()}%" for kw in keywords]
@@ -243,8 +235,6 @@ class DatabaseManager:
         Searches the symbols table for names that are a prefix of the given part number,
         replacing 'x' with a wildcard. Returns the longest matches first.
         """
-        # This query finds symbol names that are the "longest prefix" of the part number.
-        # It replaces 'x' in symbol names with '_' (single char wildcard) for matching.
         sql = """
             SELECT library_nickname, symbol_name
             FROM symbols
@@ -257,8 +247,6 @@ class DatabaseManager:
         except Exception as e:
             log.error(f"Error during specific symbol search: {e}")
             return []
-    
-    # ในไฟล์ scripts/db_manager.py
 
     def get_component_footprint_info(self, part_number: str) -> Optional[tuple]:
         """Fetches the description and current footprint path for a given part number."""

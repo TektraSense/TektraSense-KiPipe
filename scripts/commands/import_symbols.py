@@ -1,4 +1,3 @@
-# scripts/commands/import_symbols.py
 import logging
 import sys
 import os

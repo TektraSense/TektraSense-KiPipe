@@ -1,10 +1,9 @@
-# scripts/commands/fetch.py
 import logging
 import sys
 import csv
 import pandas as pd
 
-# การ import เปลี่ยนไปเล็กน้อยเพื่ออ้างอิงจากโฟลเดอร์แม่
+# Import changed slightly to reference the parent folder.
 from ..data_processor import ComponentProcessor
 from ..db_manager import DatabaseManager
 
@@ -38,10 +37,9 @@ def run(args):
         _load_from_txt(args.txt, processor, db_manager)
 
     log.info("Fetch process complete.")
-    # ไม่ต้องปิด connection ที่นี่ เพราะ main.py จะเป็นคนจัดการ
+    # Don't close the connection here, main.py will handle it.
 
-# --- Helper Functions (ย้ายมาจาก main.py เดิม) ---
-
+# --- Helper Functions (moved from the original main.py) ---
 def _process_part(part_number: str, processor: ComponentProcessor, db_manager: DatabaseManager):
     part_number = str(part_number).strip()
     if not part_number or part_number.lower() == "part number":

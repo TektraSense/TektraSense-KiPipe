@@ -1,4 +1,3 @@
-# scripts/commands/map_categories.py
 import logging
 from ..db_manager import DatabaseManager
 

@@ -35,7 +35,7 @@ def main():
     parser_scan = subparsers.add_parser("scan-missing", help="Scan database for components missing data.")
     scan_missing.setup_args(parser_scan)
 
-    # --- Setup for 'import-symbols' command (ส่วนที่เพิ่ม) ---
+    # --- Setup for 'import-symbols' command ---
     parser_import = subparsers.add_parser("import-symbols", help="Parse a .kicad_sym file and import/update symbols in the database.")
     import_symbols.setup_args(parser_import)
 
@@ -58,7 +58,7 @@ def main():
         add_symbol.run(args)
     elif args.command == "scan-missing":
         scan_missing.run(args)
-    elif args.command == "import-symbols": # <--- เพิ่มเงื่อนไขนี้
+    elif args.command == "import-symbols":
         import_symbols.run(args)
     elif args.command == "add-footprint":
         add_footprint.run(args)

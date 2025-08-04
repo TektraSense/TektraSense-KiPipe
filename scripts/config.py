@@ -32,18 +32,18 @@ MOUSER_MAPPER = {
 }
 
 SYMBOL_SEARCH_PATHS = [
-    # Path สำหรับ Custom Library ของคุณ
+    # Path for Custom Library ของคุณ
     "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/symbols",
     
-    # Path สำหรับ KiCad Official Library
+    # Path for KiCad Official Library
     "/Users/artrony/artronyone_wks/libs/KiCad/kicad-symbols"
 ]
 
 FOOTPRINT_SEARCH_PATHS = [
-    # Path สำหรับ Custom Library ของคุณ
+    # Path for Custom Library ของคุณ
     "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/footprints"
 
-    # Path สำหรับ KiCad Official Library
+    # Path for KiCad Official Library
     "/Users/artrony/artronyone_wks/libs/KiCad/kicad-footprints"
 ]
 
