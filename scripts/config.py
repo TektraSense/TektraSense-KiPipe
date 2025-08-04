@@ -31,6 +31,22 @@ MOUSER_MAPPER = {
     "pricing_list": "PriceBreaks", "quantity_available": "Availability",
 }
 
+SYMBOL_SEARCH_PATHS = [
+    # Path สำหรับ Custom Library ของคุณ
+    "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/symbols",
+    
+    # Path สำหรับ KiCad Official Library
+    "/Users/artrony/artronyone_wks/libs/KiCad/kicad-symbols"
+]
+
+FOOTPRINT_SEARCH_PATHS = [
+    # Path สำหรับ Custom Library ของคุณ
+    "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/footprints"
+
+    # Path สำหรับ KiCad Official Library
+    "/Users/artrony/artronyone_wks/libs/KiCad/kicad-footprints"
+]
+
 # --- Formatting Recipes ---
 def format_resistance(resistance_str: Optional[str]) -> str:
     if not isinstance(resistance_str, str): return ""

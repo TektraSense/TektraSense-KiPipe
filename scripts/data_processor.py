@@ -7,9 +7,9 @@ import json
 import logging
 import re
 from typing import Optional, List, Dict, Any
-import config
-import supplier_apis
-from db_manager import DatabaseManager
+from . import config
+from . import supplier_apis
+from .db_manager import DatabaseManager
 
 log = logging.getLogger(__name__)
 

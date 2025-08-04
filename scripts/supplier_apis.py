@@ -8,7 +8,7 @@ import os
 import requests
 import logging
 from typing import Optional, Dict, Any
-import config  # Import the entire config module
+from . import config
 
 log = logging.getLogger(__name__)
 

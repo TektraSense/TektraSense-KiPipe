@@ -165,3 +165,123 @@ class DatabaseManager:
             if 'conn' in locals() and conn:
                 conn.rollback()
             return False
+        
+    def get_component_symbol_info(self, part_number: str) -> Optional[tuple]:
+        """Fetches the description and current symbol path for a given part number."""
+        sql = "SELECT description, kicad_symbol FROM components WHERE manufacturer_part_number = %s"
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (part_number,))
+                    return cur.fetchone()
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Error fetching component info for {part_number}: {error}")
+            return None
+
+    def get_component_search_details(self, part_number: str) -> Optional[dict]:
+        """Fetches details needed for symbol searching (category names, package)."""
+        sql = """
+            SELECT p.category_name as parent_name, c.category_name as child_name, comp.package_case
+            FROM components comp
+            JOIN categories c ON comp.category_id = c.category_id
+            LEFT JOIN categories p ON c.parent_id = p.category_id
+            WHERE comp.manufacturer_part_number = %s;
+        """
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (part_number,))
+                    res = cur.fetchone()
+                    if res:
+                        return {"parent_name": res[0], "child_name": res[1], "package_case": res[2]}
+            return None
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Error fetching component search details for {part_number}: {error}")
+            return None
+
+    # ในไฟล์ scripts/db_manager.py
+    def search_generic_symbols(self, keywords: set) -> List[tuple]:
+        """Searches the symbols table based on a set of keywords."""
+        if not keywords:
+            return []
+        try:
+            # สร้างเงื่อนไข OR สำหรับทุก Keyword
+            search_conditions = " OR ".join([f"keywords ILIKE %s" for _ in keywords])
+            query = f"SELECT library_nickname, symbol_name FROM symbols WHERE {search_conditions}"
+            search_terms = [f"%{kw.strip()}%" for kw in keywords]
+            
+            return self.fetch_all(query, tuple(search_terms))
+        except Exception as e:
+            log.error(f"Error during symbol search: {e}")
+            return []
+    
+    def upsert_symbol(self, symbol_data: dict):
+        """Inserts a new symbol or updates an existing one based on symbol_name."""
+        sql = """
+            INSERT INTO symbols (library_nickname, symbol_name, description, datasheet, keywords)
+            VALUES (%(library_nickname)s, %(symbol_name)s, %(description)s, %(datasheet)s, %(keywords)s)
+            ON CONFLICT (symbol_name) DO UPDATE SET
+                library_nickname = EXCLUDED.library_nickname,
+                description = EXCLUDED.description,
+                datasheet = EXCLUDED.datasheet,
+                keywords = EXCLUDED.keywords;
+        """
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, symbol_data)
+                conn.commit()
+            return True
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Database upsert error for symbol '{symbol_data.get('symbol_name')}': {error}")
+            if 'conn' in locals() and conn:
+                conn.rollback()
+            return False
+    
+    def search_specific_symbol(self, part_number: str) -> List[tuple]:
+        """
+        Searches the symbols table for names that are a prefix of the given part number,
+        replacing 'x' with a wildcard. Returns the longest matches first.
+        """
+        # This query finds symbol names that are the "longest prefix" of the part number.
+        # It replaces 'x' in symbol names with '_' (single char wildcard) for matching.
+        sql = """
+            SELECT library_nickname, symbol_name
+            FROM symbols
+            WHERE %s LIKE REPLACE(symbol_name, 'x', '_') || '%'
+            ORDER BY LENGTH(symbol_name) DESC
+            LIMIT 10;
+        """
+        try:
+            return self.fetch_all(query, (part_number,))
+        except Exception as e:
+            log.error(f"Error during specific symbol search: {e}")
+            return []
+    
+    # ในไฟล์ scripts/db_manager.py
+
+    def get_component_footprint_info(self, part_number: str) -> Optional[tuple]:
+        """Fetches the description and current footprint path for a given part number."""
+        sql = "SELECT description, kicad_footprint FROM components WHERE manufacturer_part_number = %s"
+        try:
+            with self.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(sql, (part_number,))
+                    return cur.fetchone()
+        except (Exception, psycopg2.DatabaseError) as error:
+            log.error(f"Error fetching component footprint info for {part_number}: {error}")
+            return None
+
+    def search_generic_footprints(self, keywords: set) -> List[tuple]:
+        """Searches the footprints table based on a set of keywords."""
+        if not keywords:
+            return []
+        try:
+            search_conditions = " AND ".join([f"keywords ILIKE %s" for _ in keywords])
+            query = f"SELECT library_nickname, footprint_name FROM footprints WHERE {search_conditions}"
+            search_terms = [f"%{kw.strip()}%" for kw in keywords]
+            
+            return self.fetch_all(query, tuple(search_terms))
+        except Exception as e:
+            log.error(f"Error during generic footprint search: {e}")
+            return []
