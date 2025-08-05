@@ -183,7 +183,7 @@ Based on the project we've built, a person who wants to install and use the kica
 
 **Required Skills**
 * **Command Line Basics:** The user needs to be comfortable navigating directories (`cd`), running Python scripts, and providing arguments and flags from a terminal.
-* **Python & **`pip`: They must have Python installed and know how to install packages from a `requirements.txt` file using `pip`.
+* **Python &** `pip`: They must have Python installed and know how to install packages from a `requirements.txt` file using `pip`.
 * **Git Basics:** They need to know how to `git clone` a repository to get the project files.
 * **Database Administration (Basic):** This is the most crucial skill. The user must be able to:
     * Install and run a PostgreSQL server.
