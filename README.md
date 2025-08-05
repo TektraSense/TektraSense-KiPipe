@@ -181,7 +181,7 @@ python -m scripts.main scan-missing --footprint
 ### Who Is This Tool For?
 Based on the project we've built, a person who wants to install and use the kicad-component-pipeline would need the following skills:
 
-**Required Skills**
+#### **Required Skills:**
 * **Command Line Basics:** The user needs to be comfortable navigating directories (`cd`), running Python scripts, and providing arguments and flags from a terminal.
 * **Python &** `pip`: They must have Python installed and know how to install packages from a `requirements.txt` file using `pip`.
 * **Git Basics:** They need to know how to `git clone` a repository to get the project files.
