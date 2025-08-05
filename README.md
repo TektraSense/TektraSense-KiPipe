@@ -1,4 +1,4 @@
-![Status](https://img.shields.io/badge/status-work_in_progress-yellow)
+![Status](https://img.shields.io/badge/status-in_progress-yellow)
 
 # KiCad Component Pipeline
 
@@ -57,9 +57,16 @@ The core functionalities of this project are complete, and the application is **
     pip install -r requirements.txt
     ```
 
-4.  **Set up environment variables:**
+4.  **Set up the Database:**
+    -   Connect to your PostgreSQL instance using a database management tool (like DBeaver or `psql`).
+    -   Create a new, empty database for this project (e.g., `kicad_components`).
+    -   Open the file 'database/schema.sql' from this repository.
+    -   **Important:** In the script, you must replace `'YOUR_VERY_SECURE_PASSWORD'` with a strong, unique password, and replace `"YOUR_DATABASE_NAME"` with the name of the database you just created.
+    -   Run the entire SQL script. This single script will create a dedicated user, a new schema, all necessary tables, and populate the initial category data.
+
+5.  **Set up environment variables:**
     -   Copy the `.env.example` file to `.env`.
-    -   Fill in your database credentials, API keys, and the absolute paths to your KiCad symbol/footprint library folders.
+    -   Fill in your database credentials (using the dedicated user created by the SQL script), API keys, and the absolute paths to your KiCad symbol/footprint library folders.
 
     ```bash
     cp .env.example .env
@@ -71,8 +78,8 @@ The core functionalities of this project are complete, and the application is **
     DB_HOST=localhost
     DB_PORT=5432
     DB_NAME=kicad_components
-    DB_USER=postgres
-    DB_PASSWORD=your_secure_password
+    DB_USER=kicad_app # Use the dedicated user from the schema script
+    DB_PASSWORD=your_very_secure_password
 
     # --- Supplier API Keys ---
     DIGIKEY_CLIENT_ID=your_digikey_client_id
@@ -106,58 +113,67 @@ Fetches component data from supplier APIs and populates the `components` table.
 Starts an interactive assistant to map unknown supplier categories to your internal categories.
   ```bash
   python -m scripts.main map-categories
-  ```
+````
+
 ### 3. `import-symbols`
 
 Parses `.kicad_sym` library files and imports their contents into the `symbols` database catalog.
 
--   **Single File:**
-  ```bash
-  python -m scripts.main import-symbols --file "Device.kicad_sym"
-  ```
--   **Entire Directory (Recursive):**
+  - **Single File:**
 
-  ```bash
-  python -m scripts.main import-symbols --directory "path/to/your/symbol/libraries"
-  ```
-### 4. `add-symbol`
+```bash
+python -m scripts.main import-symbols --file "Device.kicad_sym"
+
+```
+  - **Entire Directory (Recursive):**
+
+```bash
+python -m scripts.main import-symbols --directory "path/to/your/symbol/libraries"
+```
+
+### 4\. `add-symbol`
 
 Finds and links a symbol to a component in the database.
 
--   **Interactive (Single Part):**
+  - **Interactive (Single Part):**
 
-  ```bash
-  python -m scripts.main add-symbol -p "PART_NUMBER"
-  ```
--   **Bulk (from File):**
+```bash
+python -m scripts.main add-symbol -p "PART_NUMBER"
+```
 
-  ```bash
-  python -m scripts.main add-symbol --spreadsheet "path/to/bom.xlsx" --column "Part Number"
-  ```
--   **Overwrite existing data:**
+  - **Bulk (from File):**
 
-  ```bash
-  python -m scripts.main add-symbol -p "PART_NUMBER" --force
-  ```
+```bash
+python -m scripts.main add-symbol --spreadsheet "path/to/bom.xlsx" --column "Part Number"
+```
+
+  - **Overwrite existing data:**
+
+```bash
+python -m scripts.main add-symbol -p "PART_NUMBER" --force
+```
+
 ### 5. `add-footprint`(Teach)
 
 "Teaches" the system a new valid footprint for a part number by adding it to the `footprint_mappings` catalog.
 
-  ```bash
-  python -m scripts.main add-footprint -p "PART_NUMBER" -f "LibraryNickname:FootprintName"
-  ```
+```bash
+python -m scripts.main add-footprint -p "PART_NUMBER" -f "LibraryNickname:FootprintName"
+```
+
 ### 6. `link-footprint` (Choose & Link)
 
 Chooses from the approved catalog and links a footprint to a component.
 
-  ```bash
-  python -m scripts.main link-footprint -p "PART_NUMBER"
-  ```
+```bash
+python -m scripts.main link-footprint -p "PART_NUMBER"
+```
+
 ### 7. `scan-missing`
 
 Scans the database to report which components are missing a symbol or footprint.
 
-  ```bash
-  python -m scripts.main scan-missing --symbol
-  python -m scripts.main scan-missing --footprint
-  ```
+```bash
+python -m scripts.main scan-missing --symbol
+python -m scripts.main scan-missing --footprint
+```
