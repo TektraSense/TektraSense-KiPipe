@@ -177,3 +177,19 @@ Scans the database to report which components are missing a symbol or footprint.
 python -m scripts.main scan-missing --symbol
 python -m scripts.main scan-missing --footprint
 ```
+
+### Who Is This Tool For?
+Based on the project we've built, a person who wants to install and use the kicad-component-pipeline would need the following skills:
+
+**Required Skills**
+* **Command Line Basics:** The user needs to be comfortable navigating directories (`cd`), running Python scripts, and providing arguments and flags from a terminal.
+* **Python & **`pip`: They must have Python installed and know how to install packages from a `requirements.txt` file using `pip`.
+* **Git Basics:** They need to know how to `git clone` a repository to get the project files.
+* **Database Administration (Basic):** This is the most crucial skill. The user must be able to:
+    * Install and run a PostgreSQL server.
+    * Connect to the server using a database client (like DBeaver or `psql`).
+    * Create a new database.
+    * Run the provided SQL scripts to create users, schemas, and tables.
+
+* **Text File Editing:** The user needs to be able to edit configuration files like `.env` and `.kicad_dbl` to enter their specific credentials and paths.
+* **The ideal user** is an **electronics engineer with some "power-user" or "hobbyist developer" skills**, someone who is not afraid of the command line and has some experience setting up a local development environment.
