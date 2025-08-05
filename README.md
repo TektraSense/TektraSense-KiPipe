@@ -186,10 +186,10 @@ Based on the project we've built, a person who wants to install and use the kica
 * **Python & **`pip`: They must have Python installed and know how to install packages from a `requirements.txt` file using `pip`.
 * **Git Basics:** They need to know how to `git clone` a repository to get the project files.
 * **Database Administration (Basic):** This is the most crucial skill. The user must be able to:
-    * Install and run a PostgreSQL server.
-    * Connect to the server using a database client (like DBeaver or `psql`).
-    * Create a new database.
-    * Run the provided SQL scripts to create users, schemas, and tables.
+    * Install and run a PostgreSQL server.
+    * Connect to the server using a database client (like DBeaver or `psql`).
+    * Create a new database.
+    * Run the provided SQL scripts to create users, schemas, and tables.
 
 * **Text File Editing:** The user needs to be able to edit configuration files like `.env` and `.kicad_dbl` to enter their specific credentials and paths.
 * **The ideal user** is an **electronics engineer with some "power-user" or "hobbyist developer" skills**, someone who is not afraid of the command line and has some experience setting up a local development environment.
