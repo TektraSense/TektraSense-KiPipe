@@ -1,0 +1,17 @@
+[project]
+name = "TektraSense-KiPipe"
+version = "0.0.1"
+description = "A data pipeline and management tool for KiCad database libraries."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "requests",
+    "psycopg2-binary",
+    "python-dotenv",
+    "pandas",
+    "openpyxl",
+    "odfpy",
+]
+
+[project.scripts]
+kipipe = "tektrasense_kipipe.main:main"
