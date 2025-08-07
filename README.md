@@ -1,6 +1,6 @@
 ![Status](https://img.shields.io/badge/status-in_progress-yellow)
 
-# KiCad Component Pipeline
+# TektraSense KiPipe
 
 A complete data pipeline and management tool for creating and maintaining a KiCad database library. It fetches component data from APIs, manages categorization, and links symbols and footprints to create fully-defined "atomic parts".
 
@@ -16,7 +16,7 @@ A complete data pipeline and management tool for creating and maintaining a KiCa
 
 ## ✅ Development Status
 
-The core functionalities of this project are complete, and the application is **ready for use**. The system supports a full end-to-end workflow, from fetching new part data to linking all necessary library assets for use in KiCad.
+The core functionalities of this project are complete. The system supports a full end-to-end workflow, from fetching new part data to linking all necessary library assets for use in KiCad. It is currently in a testing and refinement phase.
 
 ## 🛠️ Tech Stack
 
@@ -42,8 +42,8 @@ The core functionalities of this project are complete, and the application is **
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/TektraSense/kicad-component-pipeline.git](https://github.com/TektraSense/kicad-component-pipeline.git)
-    cd kicad-component-pipeline
+    git clone [https://github.com/TektraSense/TektraSense-KiPipe.git](https://github.com/TektraSense/TektraSense-KiPipe.git)
+    cd TektraSense-KiPipe
     ```
 
 2.  **Create a virtual environment:**
@@ -52,17 +52,18 @@ The core functionalities of this project are complete, and the application is **
     source .venv/bin/activate
     ```
 
-3.  **Install dependencies:**
+3.  **Install the package in editable mode:**
+    This command reads the `pyproject.toml` file, installs all dependencies, and creates the `kipipe` command.
     ```bash
-    pip install -r requirements.txt
+    pip install -e .
     ```
 
 4.  **Set up the Database:**
     -   Connect to your PostgreSQL instance using a database management tool (like DBeaver or `psql`).
     -   Create a new, empty database for this project (e.g., `kicad_components`).
-    -   Open the file `scripts/database/schema.sql` from this repository.
+    -   Open the file `database/schema.sql` from this repository.
     -   **Important:** In the script, you must replace `'YOUR_VERY_SECURE_PASSWORD'` with a strong, unique password, and replace `"YOUR_DATABASE_NAME"` with the name of the database you just created.
-    -   Run the entire SQL script. This single script will create a dedicated user, a new schema, all necessary tables, and populate the initial category data.
+    -   Run the entire SQL script. This will create a dedicated user, a new schema, all necessary tables, and populate the initial category data.
 
 5.  **Set up environment variables:**
     -   Copy the `.env.example` file to `.env`.
@@ -93,27 +94,27 @@ The core functionalities of this project are complete, and the application is **
 
 ## Usage
 
-All commands are run from the project's root directory using the main CLI entry point.
+All functionality is accessed via the `kipipe` command.
 
 ### 1. `fetch`
 
-Fetches component data from supplier APIs and populates the `components` table.
+Fetches component data from supplier APIs.
 
 -   **Single Part:**
     ```bash
-    python -m scripts.main fetch -p "PART_NUMBER"
+    kipipe fetch -p "PART_NUMBER"
     ```
--   **From a File (e.g., Excel BOM):**
+-   **From a File:**
     ```bash
-    python -m scripts.main fetch --spreadsheet "path/to/bom.xlsx" --column "Part Number"
+    kipipe fetch --spreadsheet "path/to/bom.xlsx" --column "Part Number"
     ```
 
 ### 2. `map-categories`
 
-Starts an interactive assistant to map unknown supplier categories to your internal categories.
+Starts the interactive assistant to map unknown categories.
   ```bash
-  python -m scripts.main map-categories
-````
+  kipipe map-categories
+  ```
 
 ### 3. `import-symbols`
 
@@ -122,35 +123,35 @@ Parses `.kicad_sym` library files and imports their contents into the `symbols` 
   - **Single File:**
 
 ```bash
-python -m scripts.main import-symbols --file "Device.kicad_sym"
+kipipe import-symbols --file "Device.kicad_sym"
 
 ```
   - **Entire Directory (Recursive):**
 
 ```bash
-python -m scripts.main import-symbols --directory "path/to/your/symbol/libraries"
+kipipe import-symbols --directory "path/to/your/symbol/libraries"
 ```
 
-### 4\. `add-symbol`
+### 4. `add-symbol`
 
 Finds and links a symbol to a component in the database.
 
   - **Interactive (Single Part):**
 
 ```bash
-python -m scripts.main add-symbol -p "PART_NUMBER"
+kipipe add-symbol -p "PART_NUMBER"
 ```
 
   - **Bulk (from File):**
 
 ```bash
-python -m scripts.main add-symbol --spreadsheet "path/to/bom.xlsx" --column "Part Number"
+kipipe add-symbol --spreadsheet "path/to/bom.xlsx" --column "Part Number"
 ```
 
   - **Overwrite existing data:**
 
 ```bash
-python -m scripts.main add-symbol -p "PART_NUMBER" --force
+kipipe add-symbol -p "PART_NUMBER" --force
 ```
 
 ### 5. `add-footprint`(Teach)
@@ -158,7 +159,7 @@ python -m scripts.main add-symbol -p "PART_NUMBER" --force
 "Teaches" the system a new valid footprint for a part number by adding it to the `footprint_mappings` catalog.
 
 ```bash
-python -m scripts.main add-footprint -p "PART_NUMBER" -f "LibraryNickname:FootprintName"
+kipipe add-footprint -p "PART_NUMBER" -f "LibraryNickname:FootprintName"
 ```
 
 ### 6. `link-footprint` (Choose & Link)
@@ -166,7 +167,7 @@ python -m scripts.main add-footprint -p "PART_NUMBER" -f "LibraryNickname:Footpr
 Chooses from the approved catalog and links a footprint to a component.
 
 ```bash
-python -m scripts.main link-footprint -p "PART_NUMBER"
+kipipe link-footprint -p "PART_NUMBER"
 ```
 
 ### 7. `scan-missing`
@@ -174,8 +175,8 @@ python -m scripts.main link-footprint -p "PART_NUMBER"
 Scans the database to report which components are missing a symbol or footprint.
 
 ```bash
-python -m scripts.main scan-missing --symbol
-python -m scripts.main scan-missing --footprint
+kipipe scan-missing --symbol
+kipipe scan-missing --footprint
 ```
 
 ### Who Is This Tool For?
