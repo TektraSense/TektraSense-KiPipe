@@ -61,7 +61,7 @@ The core functionalities of this project are complete. The system supports a ful
 4.  **Set up the Database:**
     -   Connect to your PostgreSQL instance using a database management tool (like DBeaver or `psql`).
     -   Create a new, empty database for this project (e.g., `kicad_components`).
-    -   Open the file `database/schema.sql` from this repository.
+    -   Open the file `src/database/schema.sql` from this repository.
     -   **Important:** In the script, you must replace `'YOUR_VERY_SECURE_PASSWORD'` with a strong, unique password, and replace `"YOUR_DATABASE_NAME"` with the name of the database you just created.
     -   Run the entire SQL script. This will create a dedicated user, a new schema, all necessary tables, and populate the initial category data.
 
