@@ -11,6 +11,14 @@ dependencies = [
     "pandas",
     "openpyxl",
     "odfpy",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "pytest-cov",
 ]
 
 [project.scripts]
