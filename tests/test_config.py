@@ -1,4 +1,3 @@
-# tests/test_config.py
 import pytest
 from tektrasense_kipipe import config
 from unittest.mock import MagicMock
@@ -24,7 +23,7 @@ def test_resistor_recipe_trigger_and_value_generator():
     assert resistor_recipe["trigger"](None) is False
 
     # --- Test Value Generator ---
-    # สร้าง mock 'find' function
+    # Create a mock 'find' function to simulate finding parameter values.
     def mock_find_param(param_name):
         params = {
             'Resistance': '100 kOhms',
@@ -49,7 +48,7 @@ def test_fet_recipe_value_generator():
     def mock_find_param(param_name):
         params = {
             'Drain to Source Voltage (Vdss)': '60V',
-            'Current - Continuous Drain (Id) @ 25°C': '12A (Ta), 25A (Tc)', # เพิ่ม Current
+            'Current - Continuous Drain (Id) @ 25°C': '12A (Ta), 25A (Tc)', # Mock includes two current values.
             'Power Dissipation (Max)': '2.5W (Ta), 150W (Tc)'
         }
         return params.get(param_name)
@@ -58,5 +57,5 @@ def test_fet_recipe_value_generator():
     generated_value = fet_recipe["value_generator"](mock_find_param, None)
 
     # 4. Assert
-    # สังเกตว่า Regex จะดึงค่าที่เกี่ยวกับ (Tc) เท่านั้น
+    # Note that the Regex should only extract the values associated with (Tc).
     assert generated_value == "60V,25A,150W"

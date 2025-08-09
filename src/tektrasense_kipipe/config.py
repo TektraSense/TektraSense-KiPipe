@@ -31,31 +31,29 @@ MOUSER_MAPPER = {
     "pricing_list": "PriceBreaks", "quantity_available": "Availability",
 }
 
+# --- Library Search Paths ---
 SYMBOL_SEARCH_PATHS = [
-    # Path for Custom Library ของคุณ
+    # Path for your custom symbol library
     "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/symbols",
-    
-    # Path for KiCad Official Library
+    # Path for KiCad's official symbol library
     "/Users/artrony/artronyone_wks/libs/KiCad/kicad-symbols"
 ]
 
 FOOTPRINT_SEARCH_PATHS = [
-    # Path for Custom Library ของคุณ
-    "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/footprints"
-
-    # Path for KiCad Official Library
+    # Path for your custom footprint library
+    "/Users/artrony/artronyone_wks/libs/KiCad/TektraSense-KiCad-DBLibs/footprints",
+    # Path for KiCad's official footprint library
     "/Users/artrony/artronyone_wks/libs/KiCad/kicad-footprints"
 ]
 
 # --- Formatting Recipes ---
 def format_resistance(resistance_str: Optional[str]) -> str:
+    """A helper function to format resistance values consistently."""
     if not isinstance(resistance_str, str):
         return ""
     text = resistance_str.strip()
-    # ทำ mOhms ก่อน และไม่ใช้ IGNORECASE เพื่อความแม่นยำ
     if 'mOhms' in text:
         text = re.sub(r'\s*mOhms\b', 'mΩ', text, flags=re.IGNORECASE)
-    # จากนั้นค่อยทำตัวอื่นๆ ที่เหลือด้วย IGNORECASE
     elif 'MOhms' in text:
         text = re.sub(r'\s*MOhms\b', 'MΩ', text, flags=re.IGNORECASE)
 
@@ -68,7 +66,7 @@ CATEGORY_RECIPES = [
         "trigger": lambda path: path is not None and len(path) > 0 and "Resistors" in path[0],
         "description_prefix": lambda path: path[-1].replace(" - Surface Mount", ""),
         "description_params": lambda path: ["Composition", "Resistance", "Tolerance", "Power (Watts)", "Temperature Coefficient", "Package / Case", "Features", "Ratings"],
-        "value_generator": lambda find, path: ",".join( # <--- เอาเว้นวรรคออก
+        "value_generator": lambda find, path: ",".join(
             v.replace(" ", "") for v in [
                 format_resistance(find('Resistance')),
                 find('Tolerance'),
@@ -165,14 +163,13 @@ CATEGORY_RECIPES = [
         "value_generator": lambda find, path: ",".join(
             v.replace(" ", "") for v in [
                 find('Drain to Source Voltage (Vdss)'),
-                # นำ Current กลับมา และปรับปรุง Regex เล็กน้อย
                 next(iter(re.findall(r"(\d+\.?\d*[mμ]?A)\s*\(Tc\)", find('Current - Continuous Drain (Id) @ 25°C') or '')), None),
                 next(iter(re.findall(r"(\d+\.?\d*[mμ]?W)\s*\(Tc\)", find('Power Dissipation (Max)') or '')), None)
             ] if v
         )
     },
     {
-        "trigger": lambda path: path is not None and len(path) > 2 and path[0] == "Optoelectronics" and "LED Indication" in path[1],
+        "trigger": lambda path: path is not None and len(path) > 1 and path[0] == "Optoelectronics" and "LED Indication" in path[1],
         "description_prefix": lambda path: path[-1],
         "description_params": lambda path: ["Lens Transparency", "Color", "Wavelength - Dominant", "Voltage - Forward (Vf) (Typ)", "Current - Test", "Package / Case", "Features"],
         "value_generator": lambda find, path: ", ".join(
@@ -184,7 +181,7 @@ CATEGORY_RECIPES = [
         )
     },
     {
-        "trigger": lambda path: path is not None and len(path) > 2 and path[0] == "Circuit Protection" and "PTC Resettable Fuses" in path[1],
+        "trigger": lambda path: path is not None and len(path) > 1 and path[0] == "Circuit Protection" and "PTC Resettable Fuses" in path[1],
         "description_prefix": lambda path: path[-1],
         "description_params": lambda path: ["Type", "Current - Hold (Ih) (Max)", "Voltage - Max", "Current - Max", "Time to Trip", "Package / Case", "Ratings", "Approval Agency"],
         "value_generator": lambda find, path: ", ".join(

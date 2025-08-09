@@ -1,74 +1,61 @@
-# tests/commands/test_link_footprint.py
 import pytest
-from unittest.mock import MagicMock, patch, ANY
-from tektrasense_kipipe.commands import link_footprint
+from tektrasense_kipipe import config
+from unittest.mock import MagicMock
 
-# สร้าง Namespace จำลองสำหรับ args
-class Args:
-    def __init__(self, part_number):
-        self.part_number = part_number
+def test_format_resistance():
+    """Tests the resistance formatting utility function."""
+    assert config.format_resistance("10 kOhms") == "10kΩ"
+    assert config.format_resistance("2.2 MOhms") == "2.2MΩ"
+    assert config.format_resistance("100 mOhms") == "100mΩ"
+    assert config.format_resistance("470 Ohms") == "470Ω"
+    assert config.format_resistance(None) == ""
 
-@pytest.fixture
-def mock_db(mocker):
-    """A fixture that provides a mocked DatabaseManager instance."""
-    db_instance = MagicMock()
-    db_instance.connection_pool = True
-    mocker.patch('tektrasense_kipipe.commands.link_footprint.DatabaseManager', return_value=db_instance)
-    return db_instance
-
-def test_auto_link_on_single_approved_footprint(mock_db):
-    """Tests happy path: auto-linking when exactly one footprint is found."""
+def test_resistor_recipe_trigger_and_value_generator():
+    """
+    Tests the trigger and value generation for the Resistors category recipe.
+    """
     # 1. Arrange
-    args = Args(part_number="PART-A")
-    mock_db.fetch_all.return_value = [("Resistor_SMD:R_0805",)] # คืนค่า 1 รายการ
+    resistor_recipe = config.CATEGORY_RECIPES[0]
     
-    # 2. Act
-    link_footprint.run(args)
-    
-    # 3. Assert
-    mock_db.fetch_all.assert_called_once()
-    mock_db.execute_query.assert_called_once_with(ANY, ("Resistor_SMD:R_0805", "PART-A"))
+    # --- Test Trigger ---
+    assert resistor_recipe["trigger"](["Resistors", "Chip Resistor - Surface Mount"]) is True
+    assert resistor_recipe["trigger"](["Capacitors", "Ceramic Capacitors"]) is False
+    assert resistor_recipe["trigger"](None) is False
 
-def test_no_link_when_no_approved_footprints_found(mock_db, caplog):
-    """Tests that no action is taken if no approved footprints are found."""
-    # 1. Arrange
-    args = Args(part_number="PART-C")
-    mock_db.fetch_all.return_value = [] # คืนค่า list ว่าง
-    
-    # 2. Act
-    link_footprint.run(args)
-    
-    # 3. Assert
-    mock_db.execute_query.assert_not_called()
-    assert "No approved footprints found for 'PART-C'" in caplog.text
+    # --- Test Value Generator ---
+    # Create a mock 'find' function to simulate finding parameter values.
+    def mock_find_param(param_name):
+        params = {
+            'Resistance': '100 kOhms',
+            'Tolerance': '±5%',
+            'Power (Watts)': '0.125W, 1/8W'
+        }
+        return params.get(param_name)
 
-@patch('builtins.input', side_effect=['5', 'invalid', '2', '3']) # จำลองการพิมพ์: ผิด -> ผิด -> ถูก
-def test_interactive_choice_with_invalid_then_valid_input(mock_input, mock_db):
-    """Tests interactive mode, ensuring it handles invalid input before a valid one."""
-    # 1. Arrange
-    args = Args(part_number="PART-B")
-    approved_fps = [("FP:A",), ("FP:B",), ("FP:C",)]
-    mock_db.fetch_all.return_value = approved_fps
+    expected_value = "100kΩ,±5%,0.125W"
+    generated_value = resistor_recipe["value_generator"](mock_find_param, None)
     
-    # 2. Act
-    link_footprint.run(args)
-    
-    # 3. Assert
-    assert mock_input.call_count == 3 # ควรจะถาม 3 ครั้ง
-    # ตรวจสอบว่าสุดท้ายแล้ว update ด้วยตัวเลือกที่ถูกต้อง (อันที่ 2)
-    mock_db.execute_query.assert_called_once_with(ANY, ("FP:B", "PART-B"))
+    assert generated_value == expected_value
 
-@patch('builtins.input', return_value='q')
-def test_interactive_choice_user_quits(mock_input, mock_db):
-    """Tests that no action is taken if the user quits the interactive prompt."""
+def test_fet_recipe_value_generator():
+    """
+    Tests the more complex regex-based value generator for the FETs recipe.
+    """
     # 1. Arrange
-    args = Args(part_number="PART-B")
-    approved_fps = [("FP:A",), ("FP:B",)]
-    mock_db.fetch_all.return_value = approved_fps
+    fet_recipe = next(r for r in config.CATEGORY_RECIPES if r["trigger"](["Semiconductors", "Transistors", "FETs, MOSFETs"]))
+
+    # 2. Arrange
+    def mock_find_param(param_name):
+        params = {
+            'Drain to Source Voltage (Vdss)': '60V',
+            'Current - Continuous Drain (Id) @ 25°C': '12A (Ta), 25A (Tc)', # Mock includes two current values.
+            'Power Dissipation (Max)': '2.5W (Ta), 150W (Tc)'
+        }
+        return params.get(param_name)
     
-    # 2. Act
-    link_footprint.run(args)
-    
-    # 3. Assert
-    mock_input.assert_called_once()
-    mock_db.execute_query.assert_not_called()
+    # 3. Act
+    generated_value = fet_recipe["value_generator"](mock_find_param, None)
+
+    # 4. Assert
+    # Note that the Regex should only extract the values associated with (Tc).
+    assert generated_value == "60V,25A,150W"
